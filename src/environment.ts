@@ -1,6 +1,6 @@
 import { BoxGeometry, Color, DirectionalLight, GridHelper, HemisphereLight, Mesh, MeshBasicMaterial, MeshStandardMaterial, Scene, SphereGeometry } from 'three';
 
-export function createEnvironment(scene: Scene) {
+export function createRandomCubeEnvironment(scene: Scene) {
 	const hemiLight = new HemisphereLight(0xffffff, 0x444444, 0.6);
 	hemiLight.position.set(0, 20, 0); // La colocamos bien arriba
 	scene.add(hemiLight);

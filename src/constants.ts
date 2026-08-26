@@ -6,5 +6,5 @@ export const CONFIG = {
 	SLAM_SCALE: 15,
 	WS_SENDER_URL: 'ws://localhost:5000',
 	WS_SLAM_URL: 'ws://localhost:5001',
-	FPS_TARGET: 16.66 // 1000ms / 60fps
+	TARGET_MS_BETWEEN_FRAMES: 16.66 // 1000ms / 60fps
 };
