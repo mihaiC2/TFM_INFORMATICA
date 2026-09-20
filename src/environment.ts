@@ -1,23 +1,22 @@
-import { BoxGeometry, Color, DirectionalLight, GridHelper, HemisphereLight, Mesh, MeshBasicMaterial, MeshStandardMaterial, Scene, SphereGeometry } from 'three';
+import { BoxGeometry, Color, DirectionalLight, DoubleSide, GridHelper, HemisphereLight, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, RepeatWrapping, Scene, SphereGeometry, TextureLoader } from 'three';
+import { GLTFLoader } from 'three/examples/jsm/Addons.js';
 
-export function createRandomCubeEnvironment(scene: Scene) {
+export function addHemisphereLight(scene: Scene) {
 	const hemiLight = new HemisphereLight(0xffffff, 0x444444, 0.6);
-	hemiLight.position.set(0, 20, 0); // La colocamos bien arriba
+	hemiLight.position.set(0, 20, 0);
+	hemiLight.castShadow = true;
 	scene.add(hemiLight);
+}
 
-	// 2. Luz Principal Cenital (Color, Intensidad)
+export function addDirectionalLight(scene: Scene) {
 	const dirLight = new DirectionalLight(0xffffff, 0.8);
-	// La colocamos arriba, pero ligeramente desplazada en X y Z 
-	// para que las caras de los cubos tengan diferentes tonos
 	dirLight.position.set(5, 10, 2);
+	dirLight.castShadow = true;
 	scene.add(dirLight);
+}
 
-	// Escena: Rejilla base
-	const gridHelper = new GridHelper(20, 40, 0x00ff00, 0xffffff);
-	gridHelper.position.y = -0.5;
-	scene.add(gridHelper);
-
-	// Escena: Cubos aleatorios
+export function addRandomCubeEnvironment(scene: Scene) {
+	// Cubos Aleatorios
 	const geometry = new BoxGeometry(0.4, 0.4, 0.4);
 	const material = [
 		Color.NAMES.red,
@@ -25,9 +24,7 @@ export function createRandomCubeEnvironment(scene: Scene) {
 		Color.NAMES.green,
 		Color.NAMES.green,
 		Color.NAMES.beige
-	].map(c => new MeshStandardMaterial({
-		color: c
-	}));
+	].map(c => new MeshStandardMaterial({ color: c, side: DoubleSide }));
 
 	for (let i = 0; i < 100; i++) {
 		const mesh = new Mesh(geometry, material[i % material.length]);
@@ -40,6 +37,57 @@ export function createRandomCubeEnvironment(scene: Scene) {
 		scene.add(mesh);
 	}
 }
+
+export function addGridHelperFloor(scene: Scene) {
+	const gridHelper = new GridHelper(20, 40, 0x00ff00, 0xffffff);
+	gridHelper.position.y = -0.5;
+	scene.add(gridHelper);
+}
+
+export function addTextureFloor(scene: Scene) {
+	const planeGeo = new PlaneGeometry(20, 20);
+
+	const textureLoader = new TextureLoader();
+	const floorTexture = textureLoader.load('dirt-ground.jpg');
+	floorTexture.wrapS = RepeatWrapping;
+	floorTexture.wrapT = RepeatWrapping;
+
+	const planeMat = new MeshStandardMaterial({
+		// color: Color.NAMES.lightgray, 
+		map: floorTexture,
+		roughness: 0.7
+	});
+	const planeMesh = new Mesh(planeGeo, planeMat);
+
+	planeMesh.rotation.x = -Math.PI / 2;
+	planeMesh.position.y = -1;
+	scene.add(planeMesh);
+}
+
+export function addGLB(scene: Scene, name: string = "room",): string {
+	const loader = new GLTFLoader();
+	const elementoEstado = document.getElementById("EstadoCarga");
+	const t0 = performance.now();
+	if (elementoEstado) { elementoEstado.innerText = "Cargando..."; }
+	loader.load(
+		`${name}.glb`,
+		(gltf) => {
+			const t1 = performance.now();
+			if (elementoEstado) { elementoEstado.innerText = `Cargado después de ${(t1 - t0) / 1000}s`; }
+			const modelo = gltf.scene;
+			scene.add(modelo);
+		},
+		(xhr) => {
+			if (elementoEstado) { elementoEstado.innerText = `Cargando... ${Math.floor(xhr.loaded / xhr.total * 100)}%`; }
+		},
+		(error) => {
+			if (elementoEstado) { elementoEstado.innerText = `Error al cargar el escenario: ${error}`; }
+		}
+	);
+
+	return name
+}
+
 
 export function createGuideBall(): Mesh {
 	const bolaGuiaGeo = new SphereGeometry(0.3, 16, 16);

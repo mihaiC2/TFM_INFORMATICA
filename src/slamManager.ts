@@ -78,3 +78,69 @@ export class SlamManager {
 		this.group.visible = isVisible;
 	}
 }
+
+export class SlamManagerNewScene {
+	public group: Group;
+	private geometryPuntos: BufferGeometry;
+	private ws: WebSocket;
+
+	constructor() {
+		this.group = new Group();
+
+		// Configuración exclusiva de la Nube de Puntos
+		this.geometryPuntos = new BufferGeometry();
+		const materialPuntos = new PointsMaterial({ color: 0xff0000, size: 0.15 });
+		const nubeDePuntos = new Points(this.geometryPuntos, materialPuntos);
+		this.group.add(nubeDePuntos);
+
+		// Configuración WebSocket
+		this.ws = new WebSocket(CONFIG.WS_SLAM_URL);
+		this.ws.binaryType = 'arraybuffer';
+		this.initWebSocket();
+	}
+
+	private initWebSocket() {
+		this.ws.onopen = () => console.log("✅ Conectado al receptor de la Nube de Puntos (5001).");
+
+		this.ws.onmessage = (evento) => {
+			// Ignoramos la pose (string) y solo procesamos el binario de los puntos
+			if (typeof evento.data !== "string") {
+				this.updatePointCloud(new Float32Array(evento.data));
+			}
+		};
+	}
+
+	private updatePointCloud(posicionesBinarias: Float32Array) {
+		this.geometryPuntos.setAttribute('position', new Float32BufferAttribute(posicionesBinarias, 3));
+	}
+
+	public exportToXYZ(name: string) {
+		const posiciones = this.geometryPuntos.getAttribute('position');
+
+		if (!posiciones || posiciones.count === 0) {
+			console.warn("No hay nube de puntos o está vacía.");
+			return;
+		}
+
+		let fileContent = '';
+
+		for (let i = 0; i < posiciones.count; i++) {
+			const x = posiciones.getX(i);
+			const y = posiciones.getY(i);
+			const z = posiciones.getZ(i);
+			fileContent += `${x} ${y} ${z}\n`;
+		}
+
+		const blob = new Blob([fileContent], { type: 'text/plain' });
+		const url = URL.createObjectURL(blob);
+
+		const link = document.createElement('a');
+		link.href = url;
+		link.download = `${name}.xyz`;
+		document.body.appendChild(link);
+		link.click();
+
+		document.body.removeChild(link);
+		URL.revokeObjectURL(url);
+	}
+}

@@ -1,46 +1,70 @@
-import { PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
-import { CONFIG } from "./constants";
-import { createGuideBall, createRandomCubeEnvironment } from "./environment";
+import { Color, PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
+import { CONFIG, KnownGLBs } from "./constants";
+import { addGLB, addGridHelperFloor, addHemisphereLight, createGuideBall } from "./environment";
 import { ControlledMovement } from "./movement";
 import { FrameSender } from "./sender";
-// import { SlamManager } from "./slamManager";
+import { SlamManagerNewScene } from "./slamManager";
 
 // Contenedores de la web
 const canvas = document.querySelector('#mi-canvas') as HTMLCanvasElement;
-const canvasiso = document.querySelector('#mi-iso-canvas') as HTMLCanvasElement;
+const canvasIso = document.querySelector('#mi-iso-canvas') as HTMLCanvasElement;
+const canvasPuntos = document.querySelector('#mi-canvas-puntos') as HTMLCanvasElement;
+const botonExportar = document.querySelector("#exportar-nube") as HTMLButtonElement;
 
-if (!canvas || !canvasiso) {
+if (!canvas || !canvasIso || !canvasPuntos) {
 	throw new Error("Desired Canvas Element not found");
 }
 
 // INICIALIZACIÓN Three.js
 const scene = new Scene();
+scene.background = new Color(Color.NAMES.skyblue);
+const scenePuntos = new Scene();
 
 // Cámara Principal
 const camera = new PerspectiveCamera(50, CONFIG.WIDTH / CONFIG.HEIGHT, CONFIG.NEAR, CONFIG.FAR);
 camera.position.z = 1;
 
 // Cámara Isométrica Auxiliar
-const cameraISO = new PerspectiveCamera(50, 2, 0.1, 1000);
+const cameraISO = new PerspectiveCamera(90, 2, 0.1, 1000);
 cameraISO.position.y = 10;
-cameraISO.lookAt(new Vector3(0, 0, 0));
+cameraISO.lookAt(0, 0, 0);
+
+// Cámara Puntos
+const cameraPuntos = new PerspectiveCamera(50, 2, 0.1, 1000);
+cameraPuntos.position.y = 10;
+cameraPuntos.lookAt(new Vector3(0, 0, 0));
 
 // Renderers
 const renderer = new WebGLRenderer({ canvas: canvas, antialias: true, preserveDrawingBuffer: true });
 renderer.setSize(CONFIG.WIDTH, CONFIG.HEIGHT);
-document.body.appendChild(renderer.domElement);
 
-const rendererISO = new WebGLRenderer({ canvas: canvasiso });
+const rendererISO = new WebGLRenderer({ canvas: canvasIso });
+rendererISO.setSize(600, 300);
+
+const rendererPuntos = new WebGLRenderer({ canvas: canvasPuntos });
+rendererPuntos.setSize(CONFIG.WIDTH, CONFIG.HEIGHT)
 
 // Escenario
-createRandomCubeEnvironment(scene);
+addHemisphereLight(scene);
+const GLBName = addGLB(scene, KnownGLBs.neighbourhood_city_modular_2);
+// addTextureFloor(scene);
+
+addHemisphereLight(scenePuntos);
+addGridHelperFloor(scenePuntos);
 
 const bolaGuia = createGuideBall();
 scene.add(bolaGuia);
 
 // SLAM Manager para dibujar puntos del servidor
-// const slamManager = new SlamManager(camera);
-// scene.add(slamManager.group);
+const slamManager = new SlamManagerNewScene();
+scenePuntos.add(slamManager.group);
+
+// Exportar
+if (botonExportar) {
+	botonExportar.addEventListener('click', () => {
+		slamManager.exportToXYZ(`PM_${GLBName}_${Math.floor(lastFrameTime / 1000)}s`);
+	});
+}
 
 // Bucle de render
 const frameSender = new FrameSender(CONFIG.WS_SENDER_URL);
@@ -60,15 +84,11 @@ function animate(time: number) {
 	movement.move(camera, timeScale);
 
 	// Movimiento de bola guía
-	bolaGuia.position.set(camera.position.x, camera.position.y + 2, camera.position.z);
+	bolaGuia.position.set(camera.position.x, camera.position.y, camera.position.z);
 
+	cameraISO.lookAt(bolaGuia.position);
 
-	// Hacer helper invisible y mandar solo escena limpia
-
-	// slamManager.setVisible(false);
-	renderer.render(scene, camera);
-
-	frameSender.trySendFrame(canvas, time);
+	frameSender.trySendFrame(canvas, time, 60);
 
 	// slamManager.setVisible(true);
 	renderer.render(scene, camera);
@@ -76,6 +96,7 @@ function animate(time: number) {
 
 	// Render cámara isométrica auxiliar para ver la posición en el mapa
 	rendererISO.render(scene, cameraISO);
+	rendererPuntos.render(scenePuntos, cameraPuntos);
 }
 
 renderer.setAnimationLoop(animate);

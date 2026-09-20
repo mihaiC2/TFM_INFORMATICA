@@ -28,22 +28,32 @@ export class ControlledMovement extends Movement {
 		'a': 'Left',
 		's': 'Backward',
 		'd': 'Right',
+		'q': 'Up',
+		'e': 'Down',
 		'arrowup': 'Forward',
 		'arrowdown': 'Backward',
 		'arrowleft': 'Left',
-		'arrowright': 'Right'
+		'arrowright': 'Right',
+		'shift': 'Down',
+		' ': 'Up',
+		'+': 'Faster',
+		'-': 'Slower'
 	};
 
 	private readonly movementFunctions: Record<string, (object: Object3D, deltaTime: number) => void> = {
 		Forward: (object, deltaTime) => this.moveForward(object, deltaTime),
 		Backward: (object, deltaTime) => this.moveBackward(object, deltaTime),
 		Left: (object, deltaTime) => this.turnLeft(object, deltaTime),
-		Right: (object, deltaTime) => this.turnRight(object, deltaTime)
+		Right: (object, deltaTime) => this.turnRight(object, deltaTime),
+		Up: (object, deltaTime) => this.moveUp(object, deltaTime),
+		Down: (object, deltaTime) => this.MoveDown(object, deltaTime),
+		Faster: () => this.moveFaster(),
+		Slower: () => this.moveSlower(),
 	};
 
 	constructor(
-		private readonly speed: number = 0.01,
-		private readonly turnSpeed: number = 0.01
+		private speed: number = 0.01,
+		private turnSpeed: number = 0.01
 	) {
 		super();
 		window.addEventListener('keydown', this.onKeyDown);
@@ -54,6 +64,10 @@ export class ControlledMovement extends Movement {
 		const key = event.key.toLowerCase();
 		if (this.keyActionMap[key]) {
 			this.activeActions.add(this.keyActionMap[key]);
+		}
+		else {
+			const status = document.getElementById("EstadoCarga");
+			if (status) { status.innerHTML = `Tecla desconocida: ${key}` }
 		}
 	};
 
@@ -95,5 +109,29 @@ export class ControlledMovement extends Movement {
 	private turnRight(object: Object3D, deltaTime: number): void {
 		// Gira el objeto sobre su eje Y local (hacia la derecha)
 		object.rotateY(-this.turnSpeed * deltaTime);
+	}
+
+	private moveUp(object: Object3D, deltaTime: number): void {
+		const upVector = new Vector3(0, 1, 0);
+
+		object.position.add(upVector.multiplyScalar(deltaTime * this.speed));
+	}
+
+	private MoveDown(object: Object3D, deltaTime: number): void {
+		const downVector = new Vector3(0, -1, 0);
+
+		object.position.add(downVector.multiplyScalar(deltaTime * this.speed));
+	}
+
+	private moveSlower(): void {
+		if (this.speed - 0.001 >= 0.001) { this.speed -= 0.001; }
+		else { this.speed = 0.001; }
+		this.turnSpeed = Math.min(this.speed * 0.55, 0.1);
+	}
+
+	private moveFaster(): void {
+		if (this.speed + 0.001 <= 2.5) { this.speed += 0.001; }
+		else { this.speed = 2.5; }
+		this.turnSpeed = Math.min(this.speed * 0.55, 0.1);
 	}
 }
